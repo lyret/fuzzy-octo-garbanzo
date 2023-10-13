@@ -4,9 +4,10 @@ import { useEditorState } from "./_useEditorState.js";
 
 // TODO: document
 
-export const StatusBar: React.FC = () => {
+export const Footer: React.FC = () => {
   const [{ currentState, currentPath, debugMessage }] = useEditorState();
 
+  // TODO: Validation code for values are here right now
   let validation = "";
   if (currentState && currentState.type == "string") {
     const res = currentState._schema.safeParse(currentState.value);

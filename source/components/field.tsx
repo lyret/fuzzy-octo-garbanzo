@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Box, Text, measureElement, useStdout } from "ink";
+import { Box, Text, measureElement } from "ink";
 import Input from "ink-text-input";
 import { State, isArrayItem } from "../state/index.js";
 import { hasFocus } from "./_hasFocus.js";
 import { useEditorState } from "./_useEditorState.js";
 import { useScreenSize } from "./_useScreenSize.js";
+import { ResponsiveBox } from "./_boxes.js";
 
 const PADDING_SIZE = 2;
 const FOCUS_COLOR = "magenta";
@@ -12,6 +13,7 @@ const EDIT_BG_COLOR = "magenta";
 const EDIT_COLOR = "white";
 
 // TODO: document
+// TODO: refactor, is not nice right now
 
 type Props<T extends State.AnyNode = State.AnyNode> = React.PropsWithChildren<{
   state: T;
@@ -119,15 +121,18 @@ const FieldValue: React.FC<Props> = ({ state, indent, children }) => {
   const hasMultipleLines =
     state.type == "string" && state.value && state.value.split("\n").length > 1;
 
-  // Get the width of the value box
-  const [valueBoxRef, valueBoxWidth] = useBoxWidth();
+  // Keep track of the dimensions of the value box
+  const [valueBoxDimensions, setValueBoxDimensions] = useState<{
+    width: number;
+    height: number;
+  }>({ width: 0, height: 0 });
 
-  // The value of this field will wrap across multipe lines and should be indicated in the rendering
+  // The value of this field will wrap across multiple lines and should be indicated in the rendering
   const willWrap =
     state.type == "string" &&
     !hasMultipleLines &&
     state.value &&
-    state.value.length >= valueBoxWidth;
+    state.value.length >= valueBoxDimensions.width;
 
   // The rendered name of this field
   const name =
@@ -146,29 +151,14 @@ const FieldValue: React.FC<Props> = ({ state, indent, children }) => {
           <Text color={isFocused ? FOCUS_COLOR : undefined}>{name}</Text>
         </Box>
       )}
-      <Box
+      <ResponsiveBox
         flexDirection="column"
         paddingRight={1}
         flexGrow={1}
-        ref={valueBoxRef}
+        onMeasurement={setValueBoxDimensions}
       >
         <Text color={isFocused ? FOCUS_COLOR : undefined}>{children}</Text>
-      </Box>
+      </ResponsiveBox>
     </Box>
   );
 };
-
-function useBoxWidth() {
-  const [screenWidth] = useScreenSize();
-  const ref = useRef<any>();
-  const [width, setWidth] = useState<number>(100000);
-
-  useEffect(() => {
-    if (ref.current) {
-      const { width } = measureElement(ref.current);
-      setWidth(width);
-    }
-  }, [ref, screenWidth]);
-
-  return [ref, width] as const;
-}

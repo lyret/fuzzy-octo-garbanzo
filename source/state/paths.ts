@@ -1,7 +1,10 @@
 import type { State } from "./types.d.ts";
 
 /** Gets the index of a path in the given list of paths */
-function getIndex(searchPath: State.Path, allPaths: Array<State.Path>): number {
+export function getIndex(
+  searchPath: State.Path,
+  allPaths: Array<State.Path>
+): number {
   return allPaths.findIndex((path) => path.toString() == searchPath.toString());
 }
 

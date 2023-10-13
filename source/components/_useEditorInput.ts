@@ -16,7 +16,6 @@ export function useEditorInput(
   const { exit } = useApp();
 
   return useInput((input, key) => {
-    update({ debug: JSON.stringify(allPaths) });
     // Enter a line break if editing and pressing shift enter
     if (
       key.ctrl &&

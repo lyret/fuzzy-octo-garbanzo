@@ -1,11 +1,14 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { z } from "zod";
-import { Box, Text, measureElement, useInput } from "ink";
+import { Box, Text } from "ink";
 import { createEditorState, EditorStateContext } from "./_useEditorState.js";
 import { useEditorInput } from "./_useEditorInput.js";
 import { useScreenSize } from "./_useScreenSize.js";
-import { StatusBar } from "./statusBar.js";
+import { Header } from "./header.js";
+import { Body } from "./body.js";
 import { Field } from "./field.js";
+import { Footer } from "./footer.js";
+import { ResponsiveBox } from "./_boxes.js";
 
 // TODO: document
 // TODO: fix fullscreen
@@ -23,144 +26,80 @@ export function Editor<S extends z.ZodTypeAny, V extends z.infer<S>>({
   const [state, updateState] = createEditorState(schema, value);
 
   // Enable keyboard control of the state
-  //useEditorInput(state, updateState);
+  useEditorInput(state, updateState);
 
-  // Let the editor take up the full terminal width and heigth when
-  // rendering to an alternative output
-  const [width, height] = useScreenSize();
+  // Keep track of the dimensions of the screen
+  const screen = useScreenSize();
 
-  if (!state.rootState) {
-    return <Text>Loading...</Text>;
-  }
+  // Keep track of the dimensions of the header
+  const [headerDimensions, setHeaderDimensions] = useState<{
+    width: number;
+    height: number;
+  }>({ width: 0, height: 0 });
 
-  let title = "We Yamling - I want to Yaml with you";
-  title =
-    " ".repeat((width - title.length) / 2) +
-    title +
-    " ".repeat((width - title.length) / 2);
-  title = title + (title.length < width ? " " : "");
+  // Keep track of the dimensions of the footer
+  const [footerDimensions, setFooterDimensions] = useState<{
+    width: number;
+    height: number;
+  }>({ width: 0, height: 0 });
 
-  //<Box flexDirection="column" paddingBottom={1}>
+  // Keep track of the dimensions of the body
+  const [bodyDimensions, setBodyDimensions] = useState<{
+    width: number;
+    height: number;
+  }>({ width: 0, height: 0 });
 
-  // {Array.from({ length: 20 })
-  //   .fill(true)
-  //   .map((_, index) => (
-  //     <Box key={index} flexShrink={0} borderStyle="single">
-  //       <Text>Item #{index + 1}</Text>
-  //     </Box>
-  //   ))}
+  // Recalculate the available space for the data area when the
+  // screen size or status bar size changes
+  useEffect(() => {
+    setBodyDimensions({
+      width: screen.width,
+      height: screen.height - footerDimensions.height - headerDimensions.height,
+    });
+  }, [screen, headerDimensions, footerDimensions]);
 
-  //</Box>
-
+  // Render
+  // Disable drawing of the body and footer when the screen size is unusable
+  // or when the state is unloaded
   return (
     <EditorStateContext.Provider value={[state, updateState]}>
       <Box
-        width={useFullscreen ? width : undefined}
-        minHeight={useFullscreen ? height : undefined}
+        width={useFullscreen ? screen.width : undefined}
+        minHeight={useFullscreen ? screen.height : undefined}
         flexDirection="column"
         justifyContent="flex-start"
       >
-        <Box
-          justifyContent="center"
-          flexShrink={0}
-          flexGrow={0}
-          alignSelf="flex-start"
-        >
-          <Text backgroundColor="magenta" color="white" bold>
-            {title}
-          </Text>
-        </Box>
-        <Box
-          width={width}
-          paddingTop={1}
-          flexDirection="column"
-          flexGrow={1}
-          overflow="hidden"
-          minHeight={0}
-        >
-          <ScrollArea height={3}>
-            <Field key={state.refreshKey} state={state.rootState} indent={0} />
-          </ScrollArea>
-        </Box>
-        <Box flexDirection="column" flexShrink={0}>
-          <StatusBar />
-        </Box>
+        {state.mode == "unloaded" || !state.rootState ? null : screen.height <
+          20 ? (
+          <Text>The editor needs more space to render.</Text>
+        ) : (
+          <>
+            <Body width={bodyDimensions.width} height={bodyDimensions.height}>
+              <Field
+                key={state.refreshKey}
+                state={state.rootState}
+                indent={0}
+              />
+            </Body>
+            <ResponsiveBox
+              flexDirection="column"
+              flexShrink={0}
+              paddingBottom={1}
+              onMeasurement={setHeaderDimensions}
+            >
+              <Header />
+            </ResponsiveBox>
+            <ResponsiveBox
+              flexDirection="column"
+              flexShrink={0}
+              paddingTop={1}
+              onMeasurement={setFooterDimensions}
+            >
+              <Footer />
+            </ResponsiveBox>
+          </>
+        )}
       </Box>
     </EditorStateContext.Provider>
-  );
-}
-
-/////
-
-const reducer = (state, action) => {
-  switch (action.type) {
-    case "SET_INNER_HEIGHT":
-      return {
-        ...state,
-        innerHeight: action.innerHeight,
-      };
-
-    case "SCROLL_DOWN":
-      return {
-        ...state,
-        scrollTop: Math.min(
-          state.innerHeight - state.height,
-          state.scrollTop + 1
-        ),
-      };
-
-    case "SCROLL_UP":
-      return {
-        ...state,
-        scrollTop: Math.max(0, state.scrollTop - 1),
-      };
-
-    default:
-      return state;
-  }
-};
-
-function ScrollArea({ height, children }: any) {
-  const [state, dispatch] = React.useReducer(reducer, {
-    height,
-    scrollTop: 0,
-  });
-
-  const innerRef = React.useRef<any>();
-
-  React.useEffect(() => {
-    const dimensions = measureElement(innerRef.current);
-
-    dispatch({
-      type: "SET_INNER_HEIGHT",
-      innerHeight: dimensions.height,
-    });
-  }, []);
-
-  useInput((_input, key) => {
-    if (key.downArrow) {
-      dispatch({
-        type: "SCROLL_DOWN",
-      });
-    }
-
-    if (key.upArrow) {
-      dispatch({
-        type: "SCROLL_UP",
-      });
-    }
-  });
-
-  return (
-    <Box height={height} flexDirection="column" overflow="hidden">
-      <Box
-        ref={innerRef}
-        flexShrink={0}
-        flexDirection="column"
-        marginTop={-state.scrollTop}
-      >
-        {children}
-      </Box>
-    </Box>
   );
 }

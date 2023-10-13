@@ -7,12 +7,13 @@ import { useStdout } from "ink";
  */
 export function useScreenSize() {
   const { stdout } = useStdout();
-  const [size, setSize] = useState<[number, number]>([
-    stdout.columns,
-    stdout.rows,
-  ]);
+  const [size, setSize] = useState<{ width: number; height: number }>({
+    width: stdout.columns,
+    height: stdout.rows,
+  });
   useEffect(() => {
-    const handler = () => setSize([stdout.columns, stdout.rows]);
+    const handler = () =>
+      setSize({ width: stdout.columns, height: stdout.rows });
     stdout.on("resize", handler);
     return () => {
       stdout.off("resize", handler);
