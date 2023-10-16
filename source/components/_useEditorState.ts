@@ -4,6 +4,7 @@ import {
   generateEditorState,
   getPathsFromState,
   getStateFromPath,
+  paths,
   State,
 } from "../state/index.js";
 
@@ -21,6 +22,10 @@ export type EditorState = {
   allPaths: Array<State.Path>;
   /** Key used for re-rendering the editor fields when a value is changed */
   refreshKey: number;
+  /**
+   * The row offset from 0 where the currently selected state is
+   * rendered in the terminal interface */
+  currentRowOffset: number;
   /** Any debug message to output in the status bar */
   debugMessage: string | undefined;
 };
@@ -37,6 +42,8 @@ type UpdatableEditorState = {
   debug: EditorState["debugMessage"];
   /** Sets the current mode of the editor */
   mode: EditorState["mode"];
+  /** Sets the row offset of the included path */
+  rowOffset: { path: State.Path; rowOffset: number };
 };
 
 /** Update method supplied from the use state hook */
@@ -63,6 +70,10 @@ export function createEditorState<S extends z.ZodTypeAny, V extends z.infer<S>>(
     useState<EditorState["debugMessage"]>(undefined);
   const [currentPath, updateCurrentPath] = useState<State.Path>([]);
   const [allPaths, updateAllPaths] = useState<Array<State.Path>>([[]]);
+  const [pathRowOffsets, updatePathRowOffsets] = useState(
+    new Map<State.Path, number>()
+  );
+  const [currentRowOffset, updateCurrentRowOffset] = useState(0);
   const [refreshKey, updateRefreshKey] = useState(0);
 
   // Update the state from the given validation schema and value object when changed
@@ -103,6 +114,26 @@ export function createEditorState<S extends z.ZodTypeAny, V extends z.infer<S>>(
     }
   }, [currentPath, rootState]);
 
+  // Update the directory of row offset for each path when the
+  // available paths change
+  useEffect(() => {
+    const newMap = new Map<State.Path, number>();
+    allPaths.map((path) => newMap.set(path, 0));
+    updatePathRowOffsets(newMap);
+  }, [allPaths]);
+
+  // Update the current row offset when the current path changes
+  useEffect(() => {
+    if (currentPath) {
+      const stop = paths.getIndex(currentPath, allPaths);
+      let offset = 0;
+      for (let i = 0; i < stop; i++) {
+        offset += pathRowOffsets.get(allPaths[i]) || 0;
+      }
+      updateCurrentRowOffset(offset);
+    }
+  }, [currentPath, pathRowOffsets]);
+
   // Return the state of the editor and update methods
   return [
     {
@@ -113,6 +144,7 @@ export function createEditorState<S extends z.ZodTypeAny, V extends z.infer<S>>(
       refreshKey,
       mode,
       debugMessage,
+      currentRowOffset,
     },
     (newState) => {
       for (const key of Object.keys(newState)) {
@@ -128,6 +160,13 @@ export function createEditorState<S extends z.ZodTypeAny, V extends z.infer<S>>(
             break;
           case "currentPath":
             updateCurrentPath(newState["currentPath"]!);
+            break;
+          case "rowOffset":
+            pathRowOffsets.set(
+              newState["rowOffset"]!.path,
+              newState["rowOffset"]!.rowOffset
+            );
+            updatePathRowOffsets(pathRowOffsets);
             break;
           case "value":
             if (currentState) {
@@ -157,6 +196,7 @@ export const EditorStateContext = React.createContext<
     refreshKey: 0,
     mode: "unloaded",
     debugMessage: undefined,
+    currentRowOffset: 0,
   },
   () => {},
 ]);

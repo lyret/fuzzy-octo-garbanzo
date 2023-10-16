@@ -111,6 +111,8 @@ const Column: React.FC<React.PropsWithChildren> = ({ children }) => {
 };
 
 const FieldValue: React.FC<Props> = ({ state, indent, children }) => {
+  const [_, update] = useEditorState();
+
   // This field is focused in the editor
   const isFocused = hasFocus(state);
 
@@ -133,6 +135,17 @@ const FieldValue: React.FC<Props> = ({ state, indent, children }) => {
     !hasMultipleLines &&
     state.value &&
     state.value.length >= valueBoxDimensions.width;
+
+  // Set the row offset for this state/path when the dimensions
+  // of the value box are known
+  useEffect(() => {
+    update({
+      rowOffset: {
+        path: state._path,
+        rowOffset: valueBoxDimensions.height,
+      },
+    });
+  }, [valueBoxDimensions]);
 
   // The rendered name of this field
   const name =

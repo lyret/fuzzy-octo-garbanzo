@@ -9,7 +9,7 @@ import { paths } from "../state/index.js";
 export const Body: React.FC<
   React.PropsWithChildren<{ width: BoxProps["width"]; height: number }>
 > = ({ width, height, children }) => {
-  const [{ currentPath, allPaths }, update] = useEditorState();
+  const [{ currentRowOffset }, update] = useEditorState();
 
   const [scrollTop, setScrollTop] = React.useState<number>(0);
   const [innerHeight, setInnerHeight] = React.useState<number>(0);
@@ -20,13 +20,22 @@ export const Body: React.FC<
       setScrollTop(0);
       return;
     }
-    setScrollTop(
-      Math.max(0, paths.getIndex(currentPath, allPaths) - overflowHeight)
-    );
+    if (currentRowOffset >= height) {
+      setScrollTop(Math.max(0, scrollTop - 1));
+    }
+    if (currentRowOffset <= scrollTop) {
+      setScrollTop(Math.min(innerHeight - height, scrollTop + 1));
+    }
     update({
-      debug: JSON.stringify({ scrollTop: scrollTop, overflow: overflowHeight }),
+      debug: JSON.stringify({
+        scrollTop,
+        overflowHeight,
+        innerHeight,
+        height,
+        currentRowOffset,
+      }),
     });
-  }, [currentPath]);
+  }, [currentRowOffset, scrollTop]);
 
   useInput((_input, key) => {
     //     if (!overflowHeight) {

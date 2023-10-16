@@ -5,7 +5,8 @@ import { useEditorState } from "./_useEditorState.js";
 // TODO: document
 
 export const Footer: React.FC = () => {
-  const [{ currentState, currentPath, debugMessage }] = useEditorState();
+  const [{ currentState, currentRowOffset, currentPath, debugMessage }] =
+    useEditorState();
 
   // TODO: Validation code for values are here right now
   let validation = "";
@@ -28,7 +29,9 @@ export const Footer: React.FC = () => {
       <Text>Tryck 'q' för att avsluta</Text>
       <Text>Type: {currentState ? currentState.type : ""}</Text>
       <Text>Value: {currentState ? String(currentState.value) : ""}</Text>
-      <Text>Path: {currentPath.toString()}</Text>
+      <Text>
+        Path: {currentPath.toString()} Offset: {currentRowOffset}
+      </Text>
       <Text>Validation: {validation}</Text>
       {debugMessage && <Text>DEBUG: {debugMessage}</Text>}
     </Box>
